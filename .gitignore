@@ -478,3 +478,13 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+Kafka.Common/obj/Kafka.Common.csproj.nuget.g.props
+KafkaConsumer.Service/obj/KafkaConsumer.Service.csproj.nuget.dgspec.json
+KafkaConsumer.Service/obj/KafkaConsumer.Service.csproj.nuget.g.props
+KafkaConsumer.Service/obj/KafkaConsumer.Service.csproj.nuget.g.targets
+KafkaConsumer.Service/obj/project.assets.json
+KafkaConsumer.Service/obj/project.nuget.cache
+KafkaProducer.Api/obj/KafkaProducer.Api.csproj.nuget.dgspec.json
+KafkaProducer.Api/obj/KafkaProducer.Api.csproj.nuget.g.props
+KafkaProducer.Api/obj/project.assets.json
+KafkaProducer.Api/obj/project.nuget.cache
