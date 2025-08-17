@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-producer-api
+  namespace: kafka-apps
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kafka-producer-api
+  template:
+    metadata:
+      labels:
+        app: kafka-producer-api
+    spec:
+      containers:
+      - name: api
+        image: your-registry/kafka-producer-api:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: Kafka__ClientId
+          valueFrom:
+            secretKeyRef:
+              name: kafka-oauth-secret
+              key: client-id
+        - name: Kafka__ClientSecret
+          valueFrom:
+            secretKeyRef:
+              name: kafka-oauth-secret
+              key: client-secret
+        volumeMounts:
+        - name: config
+          mountPath: /app/appsettings.json
+          subPath: appsettings.json
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: kafka-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-producer-api
+  namespace: kafka-apps
+spec:
+  selector:
+    app: kafka-producer-api
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP

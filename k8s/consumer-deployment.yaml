@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-consumer-service
+  namespace: kafka-apps
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kafka-consumer-service
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer-service
+    spec:
+      containers:
+      - name: consumer
+        image: your-registry/kafka-consumer-service:latest
+        env:
+        - name: Kafka__ClientId
+          valueFrom:
+            secretKeyRef:
+              name: kafka-oauth-secret
+              key: client-id
+        - name: Kafka__ClientSecret
+          valueFrom:
+            secretKeyRef:
+              name: kafka-oauth-secret
+              key: client-secret
+        volumeMounts:
+        - name: config
+          mountPath: /app/appsettings.json
+          subPath: appsettings.json
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: config
+        configMap:
+          name: kafka-config

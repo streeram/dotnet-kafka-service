@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+  namespace: kafka-apps
+data:
+  appsettings.json: |
+    {
+      "Kafka": {
+        "BootstrapServers": "pkc-xxxxx.region.provider.confluent.cloud:9092",
+        "ConsumerGroupId": "consumer-group-1",
+        "Topics": ["events-topic"],
+        "LogicalCluster": "lkc-xxxxx",
+        "IdentityPoolId": "pool-xxxxx",
+        "TokenEndpointUrl": "https://login.confluent.io/oauth2/token",
+        "Scope": "api"
+      }
+    }
