@@ -63,8 +63,8 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
                 Value = jsonMessage,
                 Headers = new Headers
                 {
-                    { "correlation-id", Guid.NewGuid().ToString() },
-                    { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString() }
+                    { "correlation-id", System.Text.Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()) },
+                    { "timestamp", System.Text.Encoding.UTF8.GetBytes(DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()) }
                 }
             };
 

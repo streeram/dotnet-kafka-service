@@ -45,7 +45,7 @@ public class Worker : BackgroundService
             EnableAutoCommit = false,
             EnableAutoOffsetStore = false,
             FetchMinBytes = 1024,
-            FetchMaxWaitMs = 500,
+            FetchWaitMaxMs = 500,
             MaxPartitionFetchBytes = 1048576,
             SessionTimeoutMs = 45000,
             HeartbeatIntervalMs = 3000,
