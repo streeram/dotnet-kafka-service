@@ -1,5 +1,4 @@
 using Confluent.SchemaRegistry;
-using Confluent.SchemaRegistry.Serdes;
 using Kafka.Common.Models;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
@@ -18,6 +17,20 @@ namespace KafkaProducer.Api.Services
         private readonly Dictionary<string, JsonSchema> _schemaCache;
         private readonly SemaphoreSlim _cacheSemaphore;
 
+        /// <summary>
+        /// Initializes the schema registry client and cache.
+        /// Uses the provided KafkaSettings and ILogger for configuration and logging.
+        /// The schema registry URL and authentication details are read from the settings.
+        /// The service caches schemas to improve performance and reduce registry calls.
+        /// The cache is protected by a semaphore to ensure thread safety.
+        /// If schema validation is disabled, it skips validation and logs a debug message.
+        /// Logs detailed information about schema retrieval and validation processes.
+        /// Throws SchemaValidationException if validation fails.
+        /// Throws CustomSchemaRegistryException if schema retrieval fails.
+        /// Disposes the schema registry client and cache semaphore when the service is no longer needed.
+        /// </summary>
+        /// <param name="settings"></param>
+        /// <param name="logger"></param>
         public SchemaValidationService(
             IOptions<KafkaSettings> settings,
             ILogger<SchemaValidationService> logger)
@@ -36,6 +49,18 @@ namespace KafkaProducer.Api.Services
             _schemaRegistryClient = new CachedSchemaRegistryClient(config);
         }
 
+        /// <summary>
+        /// Validates a message against the schema for the specified subject.
+        /// This method serializes the message to JSON and validates it against the schema.
+        /// If schema validation is disabled, it returns true without validation.
+        /// Throws SchemaValidationException if validation fails.
+        /// </summary>
+        /// <param name="subject"></param>
+        /// <param name="message"></param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        /// <exception cref="SchemaValidationException"></exception>
         public async Task<bool> ValidateMessageAsync<T>(string subject, T message, CancellationToken cancellationToken = default)
         {
             try
@@ -56,6 +81,18 @@ namespace KafkaProducer.Api.Services
             }
         }
 
+        /// <summary>
+        /// Validates a JSON message against the schema for the specified subject.
+        /// This method retrieves the schema from the registry, validates the JSON message,
+        /// and returns true if validation passes. If schema validation is disabled, it returns true without validation.
+        /// Throws SchemaValidationException if validation fails.
+        /// Logs detailed information about the validation process.
+        /// </summary>
+        /// <param name="subject"></param>
+        /// <param name="jsonMessage"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="SchemaValidationException"></exception>
         public async Task<bool> ValidateJsonMessageAsync(string subject, string jsonMessage, CancellationToken cancellationToken = default)
         {
             try
@@ -90,6 +127,16 @@ namespace KafkaProducer.Api.Services
             }
         }
 
+        /// <summary>
+        /// Gets the latest schema for the specified subject.
+        /// This method retrieves the schema from the registry and caches it for future use.
+        /// If schema retrieval fails, it throws a CustomSchemaRegistryException.
+        /// Logs detailed information about the schema retrieval process.
+        /// </summary>
+        /// <param name="subject"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="CustomSchemaRegistryException"></exception>
         public async Task<Schema> GetLatestSchemaAsync(string subject, CancellationToken cancellationToken = default)
         {
             try
@@ -116,7 +163,7 @@ namespace KafkaProducer.Api.Services
                 }
 
                 var schema = await GetLatestSchemaAsync(subject, cancellationToken);
-                var jsonSchema = await JsonSchema.FromJsonAsync(schema.SchemaString);
+                var jsonSchema = await JsonSchema.FromJsonAsync(schema.SchemaString, cancellationToken);
 
                 _schemaCache[subject] = jsonSchema;
                 _logger.LogDebug("Cached JSON schema for subject: {Subject}", subject);
@@ -129,10 +176,15 @@ namespace KafkaProducer.Api.Services
             }
         }
 
+        /// <summary>
+        /// Disposes the schema registry client and cache semaphore.
+        /// This method should be called when the service is no longer needed to release resources.
+        /// </summary>
         public void Dispose()
         {
-            _schemaRegistryClient?.Dispose();
-            _cacheSemaphore?.Dispose();
+            _schemaRegistryClient.Dispose();
+            _cacheSemaphore.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

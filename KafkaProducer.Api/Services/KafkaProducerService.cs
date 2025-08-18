@@ -5,6 +5,25 @@ using System.Text.Json;
 
 namespace KafkaProducer.Api.Services;
 
+/// <summary>
+/// Service for producing messages to Kafka topics.
+/// This service handles message serialization, schema validation, and error handling during message production.
+/// It uses Confluent.Kafka library to interact with Kafka and supports OAuth Bearer authentication.
+/// The service is designed to be used in a dependency injection context and implements IDisposable to clean up resources.
+/// It provides methods to produce messages with or without schema validation, allowing flexibility in message handling.
+/// The service logs all operations, including successful message deliveries and errors encountered during production.
+/// It supports cancellation tokens for asynchronous operations, allowing graceful shutdowns and cancellations.
+/// The Kafka producer is configured with performance optimizations such as idempotence, compression, and retry policies.
+/// The service can be extended to include additional features such as custom headers, message transformations,
+/// and integration with other Kafka components like consumers or schema registries.
+/// The KafkaProducerService class implements the IKafkaProducerService interface, providing a clear contract for
+/// producing messages to Kafka topics.
+/// It is designed to be thread-safe and can handle concurrent message production requests.
+/// The service can be configured via options, allowing customization of Kafka settings such as bootstrap servers,
+/// security protocols, and schema validation settings.
+/// The ProduceAsync method allows sending messages to a specified topic with a key and message body,
+/// while the ProduceWithSchemaValidationAsync method adds schema validation capabilities.
+/// </summary>
 public class KafkaProducerService : IKafkaProducerService, IDisposable
 {
     private readonly IProducer<string, string> _producer;
@@ -12,6 +31,17 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
     private readonly ILogger<KafkaProducerService> _logger;
     private readonly ISchemaValidationService _schemaValidationService;
 
+    /// <summary>
+    /// KafkaProducerService constructor.
+    /// Initializes the Kafka producer with the provided settings and logger.
+    /// Configures the producer with security settings, idempotence, and other performance optimizations.
+    /// Sets up error and log handlers to capture Kafka events.
+    /// The producer is configured to use OAuth Bearer authentication with the specified client ID, secret,
+    /// token endpoint URL, scope, logical cluster, and identity pool ID.
+    /// </summary>
+    /// <param name="settings"></param>
+    /// <param name="logger"></param>
+    /// <param name="schemaValidationService"></param>
     public KafkaProducerService(
         IOptions<KafkaSettings> settings,
         ILogger<KafkaProducerService> logger,
@@ -51,6 +81,21 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
             .Build();
     }
 
+    /// <summary>
+    /// Produces a message to the specified Kafka topic.
+    /// This method serializes the message to JSON, sets headers for correlation ID and timestamp,
+    /// and sends it to the Kafka topic using the provided key.
+    /// It handles errors during message production and logs the result.
+    /// The message is sent asynchronously, and the method returns a DeliveryResult containing the topic partition and offset of the produced message.
+    /// If an error occurs during production, it throws a ProduceException with details about the failure.
+    /// The method supports cancellation via a CancellationToken.
+    /// </summary>
+    /// <param name="topic"></param>
+    /// <param name="key"></param>
+    /// <param name="message"></param>
+    /// <param name="cancellationToken"></param>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
     public async Task<DeliveryResult<string, string>> ProduceAsync<T>(
         string topic,
         string key,
@@ -82,6 +127,25 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Produces a message to the specified Kafka topic with schema validation.
+    /// This method serializes the message to JSON, validates it against the schema for the specified subject,
+    /// and sends it to the Kafka topic using the provided key.
+    /// It sets headers for correlation ID, timestamp, and schema subject.
+    /// If schema validation is enabled, it validates the message before sending.
+    /// If validation fails, it throws a SchemaValidationException.
+    /// The method handles errors during message production and logs the result.
+    /// The message is sent asynchronously, and the method returns a DeliveryResult containing the topic partition and offset of the produced message.
+    /// If an error occurs during production, it throws a ProduceException with details about the failure.
+    /// The method supports cancellation via a CancellationToken.
+    /// </summary>
+    /// <param name="topic"></param>
+    /// <param name="key"></param>
+    /// <param name="message"></param>
+    /// <param name="schemaSubject"></param>
+    /// <param name="cancellationToken"></param>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
     public async Task<DeliveryResult<string, string>> ProduceWithSchemaValidationAsync<T>(
         string topic,
         string key,
@@ -144,9 +208,15 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Disposes the Kafka producer service.
+    /// This method flushes any pending messages to Kafka and disposes of the producer instance.
+    /// It ensures that all messages are sent before the service is disposed.    
+    /// </summary>
     public void Dispose()
     {
-        _producer?.Flush(TimeSpan.FromSeconds(10));
-        _producer?.Dispose();
+        _producer.Flush(TimeSpan.FromSeconds(10));
+        _producer.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

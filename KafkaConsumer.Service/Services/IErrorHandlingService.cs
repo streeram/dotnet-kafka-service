@@ -1,6 +1,5 @@
 using System.Net;
 using Confluent.Kafka;
-using Kafka.Common.Models;
 
 namespace KafkaConsumer.Service.Services;
 

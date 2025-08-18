@@ -29,6 +29,7 @@
         "Compile",
         "Format",
         "Publish",
+        "PublishApps",
         "Restore",
         "Test"
       ]
