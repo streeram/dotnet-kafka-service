@@ -18,10 +18,10 @@ public class MessageProcessor : IMessageProcessor
         {
             var eventMessage = JsonSerializer.Deserialize<EventMessage>(message);
             _logger.LogInformation($"Processing event: {eventMessage?.Type} with ID: {eventMessage?.Id}");
-            
+
             // Add your business logic here
             await Task.Delay(100, cancellationToken); // Simulate processing
-            
+
             _logger.LogInformation($"Successfully processed event: {eventMessage?.Id}");
         }
         catch (Exception ex)

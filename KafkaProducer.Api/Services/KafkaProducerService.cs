@@ -12,12 +12,12 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
     private readonly ILogger<KafkaProducerService> _logger;
 
     public KafkaProducerService(
-        IOptions<KafkaSettings> settings, 
+        IOptions<KafkaSettings> settings,
         ILogger<KafkaProducerService> logger)
     {
         _settings = settings.Value;
         _logger = logger;
-        
+
         var config = new ProducerConfig
         {
             BootstrapServers = _settings.BootstrapServers,
@@ -49,8 +49,8 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
     }
 
     public async Task<DeliveryResult<string, string>> ProduceAsync<T>(
-        string topic, 
-        string key, 
+        string topic,
+        string key,
         T message,
         CancellationToken cancellationToken = default)
     {

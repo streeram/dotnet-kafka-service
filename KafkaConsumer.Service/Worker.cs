@@ -75,7 +75,7 @@ public class Worker : BackgroundService
                 try
                 {
                     var consumeResult = _consumer.Consume(cancellationToken);
-                    
+
                     if (consumeResult?.Message != null)
                     {
                         await ProcessMessage(consumeResult, cancellationToken);
@@ -105,7 +105,7 @@ public class Worker : BackgroundService
         CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();
-        
+
         try
         {
             _logger.LogInformation(
@@ -114,14 +114,14 @@ public class Worker : BackgroundService
 
             var messageProcessor = scope.ServiceProvider
                 .GetRequiredService<IMessageProcessor>();
-            
+
             await messageProcessor.ProcessAsync(
-                consumeResult.Message.Value, 
+                consumeResult.Message.Value,
                 cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, 
+            _logger.LogError(ex,
                 $"Error processing message at {consumeResult.TopicPartitionOffset}");
             await HandleFailedMessage(consumeResult, ex);
         }
