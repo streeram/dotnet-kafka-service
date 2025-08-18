@@ -49,5 +49,25 @@ namespace Kafka.Common.Models
         /// Gets or sets the list of Kafka topics to subscribe to.
         /// </summary>
         public List<string> Topics { get; init; } = [];
+
+        /// <summary>
+        /// Gets or sets the Schema Registry URL for schema validation.
+        /// </summary>
+        public string SchemaRegistryUrl { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the Schema Registry API key for authentication.
+        /// </summary>
+        public string SchemaRegistryApiKey { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the Schema Registry API secret for authentication.
+        /// </summary>
+        public string SchemaRegistryApiSecret { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets whether schema validation is enabled.
+        /// </summary>
+        public bool EnableSchemaValidation { get; init; } = true;
     }
 }

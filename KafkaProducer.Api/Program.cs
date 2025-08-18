@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<KafkaSettings>(
     builder.Configuration.GetSection("Kafka"));
 
+builder.Services.AddSingleton<ISchemaValidationService, SchemaValidationService>();
 builder.Services.AddSingleton<IKafkaProducerService, KafkaProducerService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

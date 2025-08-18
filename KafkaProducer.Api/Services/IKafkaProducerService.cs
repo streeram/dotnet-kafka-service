@@ -9,4 +9,11 @@ public interface IKafkaProducerService
         string key,
         T message,
         CancellationToken cancellationToken = default);
+
+    Task<DeliveryResult<string, string>> ProduceWithSchemaValidationAsync<T>(
+        string topic,
+        string key,
+        T message,
+        string? schemaSubject = null,
+        CancellationToken cancellationToken = default);
 }
