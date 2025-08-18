@@ -24,6 +24,7 @@ class Build : NukeBuild
 
     AbsolutePath SolutionFile => RootDirectory / "KafkaConfluentCloud.sln";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
+    AbsolutePath PublishDirectory => ArtifactsDirectory / "publish";
 
     Target Clean => _ => _
         .Before(Restore)
@@ -81,8 +82,29 @@ class Build : NukeBuild
                 .SetDataCollector("XPlat Code Coverage"));
         });
 
-    Target Publish => _ => _
+    Target PublishApps => _ => _
         .DependsOn(Test)
+        .Executes(() =>
+        {
+            // Publish KafkaProducer.Api
+            DotNetPublish(s => s
+                .SetProject(RootDirectory / "KafkaProducer.Api" / "KafkaProducer.Api.csproj")
+                .SetConfiguration(Configuration.Release)
+                .SetOutput(PublishDirectory / "KafkaProducer.Api")
+                .EnableNoRestore()
+                .SetProperty("UseAppHost", false));
+
+            // Publish KafkaConsumer.Service
+            DotNetPublish(s => s
+                .SetProject(RootDirectory / "KafkaConsumer.Service" / "KafkaConsumer.Service.csproj")
+                .SetConfiguration(Configuration.Release)
+                .SetOutput(PublishDirectory / "KafkaConsumer.Service")
+                .EnableNoRestore()
+                .SetProperty("UseAppHost", false));
+        });
+
+    Target Publish => _ => _
+        .DependsOn(PublishApps)
         .Executes(() =>
         {
             DotNetPack(s => s

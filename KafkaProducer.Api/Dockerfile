@@ -3,19 +3,7 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
-COPY ["KafkaProducer.Api/KafkaProducer.Api.csproj", "KafkaProducer.Api/"]
-COPY ["Kafka.Common/Kafka.Common.csproj", "Kafka.Common/"]
-RUN dotnet restore "KafkaProducer.Api/KafkaProducer.Api.csproj"
-COPY . .
-WORKDIR "/src/KafkaProducer.Api"
-RUN dotnet build "KafkaProducer.Api.csproj" -c Release -o /app/build
-
-FROM build AS publish
-RUN dotnet publish "KafkaProducer.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
-
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY artifacts/publish/KafkaProducer.Api/ .
 ENTRYPOINT ["dotnet", "KafkaProducer.Api.dll"]
