@@ -1,4 +1,4 @@
-# Kafka Confluent Cloud with .NET 8 and OAuth
+# Kafka Confluent Cloud with .NET 9 and OAuth
 
 Production-ready Kafka producer and consumer implementation for Confluent Cloud with OAuth authentication, designed for Kubernetes deployment in AKS.
 
@@ -15,7 +15,7 @@ Production-ready Kafka producer and consumer implementation for Confluent Cloud 
 
 ## 📋 Prerequisites
 
-- .NET 8 SDK
+- .NET 9 SDK
 - Docker
 - Kubernetes cluster (AKS)
 - Confluent Cloud account with OAuth configured
