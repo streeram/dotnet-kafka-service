@@ -1,18 +1,26 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 using Nuke.Common;
+using Nuke.Common.CI;
+using Nuke.Common.Git;
 using Nuke.Common.IO;
+using Nuke.Common.ProjectModel;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Utilities.Collections;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
+[ShutdownDotNetAfterServerBuild]
 class Build : NukeBuild
 {
-    public static int Main() => Execute<Build>(x => x.Compile);
+    public static int Main() => Execute<Build>(x => x.Publish);
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
-    readonly string Configuration = "Debug";
+    readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
+
+    [Solution] readonly Solution Solution;
+    [GitRepository] readonly GitRepository GitRepository;
 
     AbsolutePath SolutionFile => RootDirectory / "KafkaConfluentCloud.sln";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
@@ -40,17 +48,24 @@ class Build : NukeBuild
         {
             DotNetFormat(s => s
                 .SetProject(SolutionFile)
-                .SetVerifyNoChanges(false));
+                .SetVerifyNoChanges(EnvironmentInfo.Variables.ContainsKey("TF_BUILD")));
         });
 
     Target Compile => _ => _
         .DependsOn(Restore)
         .Executes(() =>
         {
+            var defaultProperties = new Dictionary<string, object>
+            {
+                { "AnalysisLevel", "latest-recommended" },
+                { "EnforceCodeStyleInBuild", "true" }
+            };
+
             DotNetBuild(s => s
+                .EnableNoRestore()
                 .SetProjectFile(SolutionFile)
                 .SetConfiguration(Configuration)
-                .EnableNoRestore());
+                .SetProperties(defaultProperties));
         });
 
     Target Test => _ => _
@@ -61,29 +76,19 @@ class Build : NukeBuild
                 .SetProjectFile(SolutionFile)
                 .SetConfiguration(Configuration)
                 .EnableNoBuild()
-                .EnableNoRestore());
+                .EnableNoRestore()
+                .SetLoggers("trx")
+                .SetDataCollector("XPlat Code Coverage"));
         });
 
     Target Publish => _ => _
         .DependsOn(Test)
         .Executes(() =>
         {
-            var apiProject = RootDirectory / "KafkaProducer.Api" / "KafkaProducer.Api.csproj";
-            var serviceProject = RootDirectory / "KafkaConsumer.Service" / "KafkaConsumer.Service.csproj";
-
-            DotNetPublish(s => s
-                .SetProject(apiProject)
-                .SetConfiguration(Configuration)
-                .SetOutput(ArtifactsDirectory / "KafkaProducer.Api")
-                .EnableNoBuild()
-                .EnableNoRestore());
-
-            DotNetPublish(s => s
-                .SetProject(serviceProject)
-                .SetConfiguration(Configuration)
-                .SetOutput(ArtifactsDirectory / "KafkaConsumer.Service")
-                .EnableNoBuild()
-                .EnableNoRestore());
+            DotNetPack(s => s
+            .EnableNoRestore()
+            .SetConfiguration(Configuration.Release)
+            .SetOutputDirectory(ArtifactsDirectory));
         });
 
     Target BuildAll => _ => _
