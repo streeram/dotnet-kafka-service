@@ -119,11 +119,28 @@ public class Worker : BackgroundService
                 consumeResult.Message.Value,
                 cancellationToken);
         }
+        catch (ThirdPartyApiException apiEx)
+        {
+            _logger.LogWarning(apiEx,
+                $"Third-party API error processing message at {consumeResult.TopicPartitionOffset}. " +
+                $"Status: {apiEx.StatusCode}");
+
+            var errorHandlingService = scope.ServiceProvider
+                .GetRequiredService<IErrorHandlingService>();
+
+            await errorHandlingService.HandleFailedMessageAsync(
+                consumeResult, apiEx, apiEx.StatusCode, apiEx.ApiResponse, cancellationToken);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex,
                 $"Error processing message at {consumeResult.TopicPartitionOffset}");
-            await HandleFailedMessage(consumeResult, ex);
+
+            var errorHandlingService = scope.ServiceProvider
+                .GetRequiredService<IErrorHandlingService>();
+
+            await errorHandlingService.HandleFailedMessageAsync(
+                consumeResult, ex, cancellationToken: cancellationToken);
         }
     }
 
@@ -131,7 +148,8 @@ public class Worker : BackgroundService
         ConsumeResult<string, string> consumeResult,
         Exception exception)
     {
-        _logger.LogError($"Moving message to DLQ: {consumeResult.TopicPartitionOffset}");
+        // This method is now deprecated in favor of the ErrorHandlingService
+        _logger.LogWarning($"Using deprecated HandleFailedMessage method for: {consumeResult.TopicPartitionOffset}");
         await Task.CompletedTask;
     }
 
