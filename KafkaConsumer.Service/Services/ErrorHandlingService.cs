@@ -126,18 +126,43 @@ public class ErrorHandlingService : IErrorHandlingService
         CancellationToken cancellationToken)
     {
         var retryTopic = GetRetryTopicName(originalTopic);
-        var retryMessage = CreateRetryMessage(
-            originalTopic, originalKey, originalMessage,
-            currentRetryAttempt + 1, exception, apiStatusCode, apiResponse);
+        var nextRetryAttempt = currentRetryAttempt + 1;
 
-        var retryMessageJson = JsonSerializer.Serialize(retryMessage);
+        // Calculate exponential backoff delay
+        var delayMs = CalculateRetryDelay(nextRetryAttempt);
+        var processAfterTimestamp = DateTimeOffset.UtcNow.AddMilliseconds(delayMs);
+
+        // For retry topics, we send the original message with retry metadata in headers
+        var messageToSend = GetOriginalMessageContent(originalMessage);
 
         try
         {
-            await _producerService.ProduceAsync(retryTopic, originalKey, retryMessageJson, cancellationToken);
+            var headers = new Headers
+            {
+                { "x-retry-attempt", BitConverter.GetBytes(nextRetryAttempt) },
+                { "x-process-after", BitConverter.GetBytes(processAfterTimestamp.ToUnixTimeMilliseconds()) },
+                { "x-original-topic", System.Text.Encoding.UTF8.GetBytes(GetOriginalTopicName(originalTopic)) },
+                { "x-first-attempt-timestamp", BitConverter.GetBytes(GetFirstAttemptTimestamp(originalMessage).ToUnixTimeMilliseconds()) },
+                { "x-last-error-type", System.Text.Encoding.UTF8.GetBytes(exception.GetType().Name) },
+                { "x-last-error-message", System.Text.Encoding.UTF8.GetBytes(exception.Message) }
+            };
+
+            if (apiStatusCode.HasValue)
+            {
+                headers.Add("x-api-status-code", BitConverter.GetBytes((int)apiStatusCode.Value));
+            }
+
+            if (!string.IsNullOrEmpty(apiResponse))
+            {
+                headers.Add("x-api-response", System.Text.Encoding.UTF8.GetBytes(apiResponse));
+            }
+
+            await _producerService.ProduceAsync(retryTopic, originalKey, messageToSend, headers, cancellationToken);
+
             _logger.LogInformation(
-                "Message sent to retry topic {RetryTopic}. Retry attempt: {RetryAttempt}",
-                retryTopic, currentRetryAttempt + 1);
+                "Message sent to retry topic {RetryTopic}. Retry attempt: {RetryAttempt}, " +
+                "Delay: {DelayMs}ms, Process after: {ProcessAfter}",
+                retryTopic, nextRetryAttempt, delayMs, processAfterTimestamp);
         }
         catch (Exception ex)
         {
@@ -184,6 +209,51 @@ public class ErrorHandlingService : IErrorHandlingService
             throw;
         }
     }
+
+    private long CalculateRetryDelay(int retryAttempt)
+    {
+        if (!_settings.RetryConfiguration.UseExponentialBackoff)
+        {
+            return _settings.RetryConfiguration.RetryDelayMs;
+        }
+
+        // Calculate exponential backoff: baseDelay * (multiplier ^ (attempt - 1))
+        var baseDelayMs = Math.Max(_settings.RetryConfiguration.RetryDelayMs, _settings.RetryConfiguration.MinRetryDelayMs);
+        var exponentialDelay = baseDelayMs * Math.Pow(_settings.RetryConfiguration.BackoffMultiplier, retryAttempt - 1);
+
+        // Apply jitter (±10% randomization) to prevent thundering herd
+        var jitterFactor = 1.0 + (Random.Shared.NextDouble() - 0.5) * 0.2; // ±10%
+        var delayWithJitter = exponentialDelay * jitterFactor;
+
+        // Ensure delay is within bounds
+        var finalDelay = Math.Min(delayWithJitter, _settings.RetryConfiguration.MaxRetryDelayMs);
+        finalDelay = Math.Max(finalDelay, _settings.RetryConfiguration.MinRetryDelayMs);
+
+        return (long)finalDelay;
+    }
+
+    private string GetOriginalMessageContent(string message)
+    {
+        // If this is already a retry message, extract the original content
+        var retryMessage = TryExtractRetryMessage(message);
+        return retryMessage?.OriginalMessage ?? message;
+    }
+
+    private string GetOriginalTopicName(string currentTopic)
+    {
+        // Remove retry and DLQ suffixes to get the original topic name
+        return currentTopic
+            .Replace(_settings.RetryConfiguration.RetryTopicSuffix, "")
+            .Replace(_settings.RetryConfiguration.DeadLetterTopicSuffix, "");
+    }
+
+    private DateTimeOffset GetFirstAttemptTimestamp(string message)
+    {
+        var retryMessage = TryExtractRetryMessage(message);
+        return retryMessage?.FirstAttemptTimestamp ?? DateTimeOffset.UtcNow;
+    }
+
+    // ... existing code ...
 
     private RetryMessage CreateRetryMessage(
         string originalTopic,
@@ -233,7 +303,7 @@ public class ErrorHandlingService : IErrorHandlingService
         return retryMessage?.RetryAttempt ?? 0;
     }
 
-    private RetryMessage? TryExtractRetryMessage(string message)
+    private static RetryMessage? TryExtractRetryMessage(string message)
     {
         try
         {

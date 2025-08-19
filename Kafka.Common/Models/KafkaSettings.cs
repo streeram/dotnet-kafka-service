@@ -115,6 +115,21 @@ namespace Kafka.Common.Models
         /// Gets or sets the backoff multiplier for exponential backoff.
         /// </summary>
         public double BackoffMultiplier { get; init; } = 2.0;
+
+        /// <summary>
+        /// Gets or sets the maximum delay in milliseconds for exponential backoff.
+        /// </summary>
+        public int MaxRetryDelayMs { get; init; } = 300000; // 5 minutes
+
+        /// <summary>
+        /// Gets or sets the minimum delay in milliseconds for exponential backoff.
+        /// </summary>
+        public int MinRetryDelayMs { get; init; } = 1000; // 1 second
+
+        /// <summary>
+        /// Gets or sets the polling interval in milliseconds for the retry consumer.
+        /// </summary>
+        public int RetryConsumerPollingIntervalMs { get; init; } = 1000; // 1 second
     }
 
     /// <summary>
